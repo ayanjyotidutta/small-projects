@@ -1,0 +1,8 @@
+Version,Milestone,Challenge / Friction Point,Strategic Intervention,Result
+v0.1,Logic Foundation,"RGB matching was too technical and ""math-heavy"" for users.","Architecture Shift: Replaced RGB with HSL (Hue, Saturation, Lightness).",Aligned the engine with human artistic intuition.
+v0.3,Game Loop,"The tool felt like a static utility; no stakes or ""hook.""",The Timer Engine: Split UX into 5s Memory and 30s Execution phases.,"Transformed a tool into a ""Pressure Cooker"" game."
+v0.5,UX Stress,The 30s window felt too long; users were losing focus.,Heartbeat Sync: Integrated a 1s viewport pulse animation.,"Induced psychological urgency, making the timer feel visceral."
+v0.7,Difficulty Curve,"Random colors led to ""dead rounds"" (too easy or impossible).",Thematic Categorization: Grouped rounds (Neon → Pastels → Muted Earth).,"Created a smooth ""Flow State"" journey for the user."
+v0.8,Scoring Engine,"High scores were too easy to obtain; no ""Elite"" status.",Cubic Decay Algorithm: Applied a 1.8x exponent to 3D Euclidean distance.,"Elevated the skill ceiling; a ""9.5"" became a true badge of honor."
+v0.9,Retention Hook,Users played once and closed the tab.,"Dynamic ""Beat It"" Logic: Programmed the Retry CTA to suggest Current Score + 1.","Triggered the Zeigarnik Effect, driving repeat sessions."
+v1.0,The Elite Launch,"Branding lacked professional ""finish"" and authority.","The OpticAI Rebrand: Shifted to a tech-forward, ""Old Money"" monochromatic aesthetic.",Positioned as a Perceptual Audit for visual professionals.

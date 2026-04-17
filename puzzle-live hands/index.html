@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle Pinch - Hand Tracking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- MediaPipe Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f0f11;
+            font-family: 'Outfit', sans-serif;
+            color: white;
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header {
+            position: absolute;
+            top: 2rem;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            color: #baff29;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: #a0a0a0;
+            margin-top: 0.5rem;
+        }
+
+        .win-screen {
+            background: rgba(15, 15, 17, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 3rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            pointer-events: auto;
+            border: 1px solid rgba(186, 255, 41, 0.2);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .win-screen.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .trophy {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: #baff29;
+        }
+
+        .input-group {
+            margin-top: 2rem;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            width: 200px;
+        }
+
+        input:focus {
+            border-color: #baff29;
+        }
+
+        button {
+            background: #baff29;
+            color: black;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #loading {
+            position: absolute;
+            inset: 0;
+            background: #0f0f11;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .loader {
+            border: 3px solid rgba(186, 255, 41, 0.2);
+            border-top: 3px solid #baff29;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Hidden Video Element for Camera Feed -->
+    <video id="video" style="display: none;" playsinline></video>
+
+    <!-- Main Render Canvas -->
+    <canvas id="canvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div class="ui-layer">
+
+        <!-- Top Left Elements -->
+        <div id="leaderboardBtn"
+            class="absolute top-6 left-6 cursor-pointer bg-[#424242]/95 hover:bg-[#505050] text-white font-bold text-sm tracking-wider rounded-full px-5 py-2.5 flex items-center gap-3 pointer-events-auto transition-all shadow-lg z-50">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="2" y="10" fill="#baff29" font-size="11" font-weight="900"
+                    font-family="'JetBrains Mono', monospace">1</text>
+                <path d="M11 7H21" stroke="#baff29" stroke-width="2.5" stroke-linecap="round" />
+                <text x="2" y="19" fill="#baff29" font-size="11" font-weight="900"
+                    font-family="'JetBrains Mono', monospace">2</text>
+                <path d="M11 16H21" stroke="#baff29" stroke-width="2.5" stroke-linecap="round" />
+            </svg>
+            LEADERBOARD
+        </div>
+
+        <!-- Top Right Elements (Guidelines) -->
+        <div id="hintsBlock"
+            class="absolute top-6 right-6 bg-[#3a3b3c]/95 p-5 rounded-xl border border-white/10 font-mono text-sm text-right pointer-events-none z-50 shadow-2xl backdrop-blur-md transition-all">
+            <div id="hintPhase" class="text-[#baff29] font-bold mb-3 tracking-widest uppercase">PHASE 1: CAPTURE</div>
+            <div id="hintLine1" class="text-gray-200 mb-2">1. Form a frame with two hands</div>
+            <div id="hintLine2" class="text-gray-200 mb-2">2. Pinch both hands to SNAP</div>
+            <div id="hintLine3" class="text-[#baff29] mt-3 font-bold opacity-90 hidden">Hold Fist to Reset</div>
+        </div>
+
+        <!-- Bottom Right Pinch Hint -->
+        <div id="pinchHint"
+            class="absolute bottom-6 right-6 font-mono text-sm text-gray-400 pointer-events-none hidden z-50">
+            ✋ Use Index+Thumb Pinch
+        </div>
+
+        <!-- Bottom Left Reset -->
+        <div id="resetBtn"
+            class="absolute bottom-6 left-6 cursor-pointer bg-[#0f0f11]/80 p-3 rounded-full border border-white/20 hover:border-[#baff29] pointer-events-auto hidden transition-all z-50">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                </path>
+            </svg>
+        </div>
+
+        <!-- Header -->
+        <div class="header" id="header">
+            <div class="title">PUZZLE PINCH</div>
+            <div class="subtitle" id="instruction">Frame it. Grab it. Drag & Drop. To Swap.</div>
+        </div>
+
+        <!-- Win Modal -->
+        <div id="winScreen" class="win-screen hidden">
+            <div class="trophy">🏆</div>
+            <div class="text-3xl font-bold tracking-widest text-[#baff29]">COMPLETE!</div>
+            <div class="font-mono text-xl mt-2 mb-6" id="finalTime">0:00</div>
+            <div class="text-sm text-gray-400">Enter your name for the leaderboard</div>
+            <div class="input-group">
+                <input type="text" id="playerName" placeholder="Your Name" maxlength="15">
+                <button id="submitBtn">→</button>
+            </div>
+            <div id="nameError" class="text-red-400 text-xs mt-2 hidden">Only letters, numbers, and _ allowed</div>
+        </div>
+
+        <!-- Leaderboard Modal -->
+        <div id="leaderboardModal" class="win-screen hidden">
+            <div class="text-2xl font-bold tracking-widest text-[#baff29] mb-6">LEADERBOARD</div>
+            <div id="leaderboardList" class="font-mono text-lg space-y-3 mb-8 min-w-[250px] text-left">
+                <!-- Populated via JS -->
+            </div>
+            <button id="closeLeaderboardBtn">PLAY AGAIN</button>
+        </div>
+
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="loader"></div>
+        <div class="font-mono text-sm tracking-widest animate-pulse text-[#baff29]">INITIALIZING CAMERA & AI...</div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://hhoovzphbhslhorophbv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhob292enBoYmhzbGhvcm9waGJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzODk4MzAsImV4cCI6MjA5MTk2NTgzMH0.OJUlQO2qPkESl8Qrx-IX9C-Yk3VzIx8xpGDl9c0WmrQ';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const winScreen = document.getElementById('winScreen');
+        const finalTimeEl = document.getElementById('finalTime');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const instruction = document.getElementById('instruction');
+        const playerNameInput = document.getElementById('playerName');
+        const nameError = document.getElementById('nameError');
+
+        const leaderboardBtn = document.getElementById('leaderboardBtn');
+        const hintsBlock = document.getElementById('hintsBlock');
+        const resetBtn = document.getElementById('resetBtn');
+        const leaderboardModal = document.getElementById('leaderboardModal');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const closeLeaderboardBtn = document.getElementById('closeLeaderboardBtn');
+
+        // Offscreen canvas for capturing the snapshot
+        const offCanvas = document.createElement('canvas');
+        const offCtx = offCanvas.getContext('2d');
+
+        // Hand skeletal connections for drawing
+        const HAND_EDGES = [
+            [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
+            [0, 5], [5, 6], [6, 7], [7, 8],       // Index
+            [5, 9], [9, 10], [10, 11], [11, 12],  // Middle
+            [9, 13], [13, 14], [14, 15], [15, 16], // Ring
+            [13, 17], [17, 18], [18, 19], [19, 20], // Pinky
+            [0, 17]                            // Base
+        ];
+
+        // Game State
+        let state = 'CAPTURE'; // CAPTURE, PUZZLE, WIN, LEADERBOARD
+        let pieces = [];
+        let cropRect = null;
+        let draggingPiece = null;
+        let hoverGrid = null;
+
+        let startTime = 0;
+        let finalTimeMs = 0;
+        let timerDisplay = "0:00";
+
+        let resetStartTime = 0;
+        const RESET_DURATION = 3000;
+
+        // Configuration
+        const GRID_SIZE = 3;
+        const HAND_COLOR = 'rgba(255, 255, 255, 0.8)';
+        const ACCENT_COLOR = '#baff29';
+
+        // Resize Canvas to fill screen
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            offCanvas.width = canvas.width;
+            offCanvas.height = canvas.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Utilities
+        function getDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function isPinching(hand) {
+            if (!hand) return false;
+            const handSize = getDistance(hand[0], hand[9]);
+            const dynamicThreshold = Math.max(15, handSize * 0.15);
+            return getDistance(hand[4], hand[8]) < dynamicThreshold;
+        }
+
+        function isFist(hand) {
+            if (!hand) return false;
+            const wrist = hand[0];
+            const handSize = getDistance(wrist, hand[9]);
+            // If fingertips are close to the wrist (curled in), it's a fist
+            const threshold = handSize * 1.5;
+
+            return getDistance(wrist, hand[8]) < threshold &&
+                getDistance(wrist, hand[12]) < threshold &&
+                getDistance(wrist, hand[16]) < threshold &&
+                getDistance(wrist, hand[20]) < threshold;
+        }
+
+        function getPinchCenter(hand) {
+            return {
+                x: (hand[4].x + hand[8].x) / 2,
+                y: (hand[4].y + hand[8].y) / 2
+            };
+        }
+
+        // Draw the sleek hand wireframe
+        function drawHand(hand, isPinching, isPuzzleMode = false) {
+            ctx.strokeStyle = HAND_COLOR;
+            ctx.lineWidth = 2;
+
+            // Draw connections
+            HAND_EDGES.forEach(edge => {
+                const p1 = hand[edge[0]];
+                const p2 = hand[edge[1]];
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            });
+
+            // Draw joints
+            ctx.fillStyle = HAND_COLOR;
+            hand.forEach((point, index) => {
+                ctx.beginPath();
+                const size = [4, 8, 12, 16, 20].includes(index) ? 4 : 2;
+                ctx.arc(point.x, point.y, size, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+
+            // Draw Interaction Indicator
+            if (isPuzzleMode) {
+                // Game pointer (shows on the tile being grabbed/hovered)
+                const pointerX = isPinching ? getPinchCenter(hand).x : hand[8].x;
+                const pointerY = isPinching ? getPinchCenter(hand).y : hand[8].y;
+
+                ctx.beginPath();
+                ctx.arc(pointerX, pointerY, isPinching ? 12 : 8, 0, Math.PI * 2);
+                if (isPinching) {
+                    ctx.fillStyle = ACCENT_COLOR;
+                    ctx.fill();
+                } else {
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = ACCENT_COLOR;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(pointerX, pointerY, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = ACCENT_COLOR;
+                    ctx.fill();
+                }
+            } else if (isPinching) {
+                // Default capture phase double-ring pinch indicator
+                const center = getPinchCenter(hand);
+                ctx.beginPath();
+                ctx.fillStyle = ACCENT_COLOR;
+                ctx.arc(center.x, center.y, 8, 0, 2 * Math.PI);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.strokeStyle = ACCENT_COLOR;
+                ctx.lineWidth = 2;
+                ctx.arc(center.x, center.y, 14, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        // Create the 3x3 puzzle from a cropped snapshot
+        function createPuzzle() {
+            pieces = [];
+            const pieceW = cropRect.w / GRID_SIZE;
+            const pieceH = cropRect.h / GRID_SIZE;
+
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const sx = cropRect.x + c * pieceW;
+                    const sy = cropRect.y + r * pieceH;
+
+                    const sliceCanvas = document.createElement('canvas');
+                    sliceCanvas.width = pieceW;
+                    sliceCanvas.height = pieceH;
+                    const sliceCtx = sliceCanvas.getContext('2d');
+                    sliceCtx.drawImage(offCanvas, sx, sy, pieceW, pieceH, 0, 0, pieceW, pieceH);
+
+                    pieces.push({
+                        id: r * GRID_SIZE + c,
+                        correctC: c,
+                        correctR: r,
+                        currentC: c,
+                        currentR: r,
+                        imgCanvas: sliceCanvas,
+                        w: pieceW,
+                        h: pieceH
+                    });
+                }
+            }
+
+            shufflePuzzle();
+
+            state = 'PUZZLE';
+            startTime = Date.now();
+            instruction.innerText = "Pinch to grab a piece. Drag to swap.";
+
+            // Toggle UI Context
+            leaderboardBtn.classList.add('hidden');
+            resetBtn.classList.remove('hidden');
+
+            // Update Guidelines
+            document.getElementById('hintPhase').innerText = "PHASE 2: SOLVE";
+            document.getElementById('hintLine1').innerText = "1. Pinch to Pick Up";
+            document.getElementById('hintLine2').innerText = "2. Drag & Drop to Swap";
+            document.getElementById('hintLine3').classList.remove('hidden');
+            document.getElementById('pinchHint').classList.remove('hidden');
+        }
+
+        function shufflePuzzle() {
+            const positions = [];
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    positions.push({ c, r });
+                }
+            }
+
+            for (let i = positions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [positions[i], positions[j]] = [positions[j], positions[i]];
+            }
+
+            pieces.forEach((piece, i) => {
+                piece.currentC = positions[i].c;
+                piece.currentR = positions[i].r;
+            });
+
+            if (checkWin(false)) {
+                const tempC = pieces[0].currentC;
+                const tempR = pieces[0].currentR;
+                pieces[0].currentC = pieces[1].currentC;
+                pieces[0].currentR = pieces[1].currentR;
+                pieces[1].currentC = tempC;
+                pieces[1].currentR = tempR;
+            }
+        }
+
+        function checkWin(triggerWin = true) {
+            const isSolved = pieces.every(p => p.currentC === p.correctC && p.currentR === p.correctR);
+            if (isSolved && triggerWin) {
+                finalTimeMs = Date.now() - startTime;
+                state = 'WIN';
+
+                resetBtn.classList.add('hidden');
+                hintsBlock.classList.add('hidden');
+                document.getElementById('pinchHint').classList.add('hidden');
+
+                playerNameInput.value = '';
+                nameError.classList.add('hidden');
+                winScreen.classList.remove('hidden');
+                setTimeout(() => winScreen.classList.add('visible'), 50);
+                finalTimeEl.innerText = timerDisplay;
+                instruction.innerText = "Puzzle Solved!";
+            }
+            return isSolved;
+        }
+
+        function resetGame() {
+            winScreen.classList.remove('visible');
+            leaderboardModal.classList.remove('visible');
+            setTimeout(() => {
+                winScreen.classList.add('hidden');
+                leaderboardModal.classList.add('hidden');
+                state = 'CAPTURE';
+                pieces = [];
+                cropRect = null;
+                playerNameInput.value = '';
+                instruction.innerText = "Frame it. Grab it. Drag & Drop. To Swap.";
+
+                // Toggle UI context
+                leaderboardBtn.classList.remove('hidden');
+                resetBtn.classList.add('hidden');
+                hintsBlock.classList.remove('hidden');
+                document.getElementById('pinchHint').classList.add('hidden');
+
+                // Update Guidelines
+                document.getElementById('hintPhase').innerText = "PHASE 1: CAPTURE";
+                document.getElementById('hintLine1').innerText = "1. Form a frame with two hands";
+                document.getElementById('hintLine2').innerText = "2. Pinch both hands to SNAP";
+                document.getElementById('hintLine3').classList.add('hidden');
+
+                resetStartTime = 0;
+            }, 400);
+        }
+
+        // Leaderboard logic
+        async function populateLeaderboard() {
+            leaderboardList.innerHTML = '<div class="text-gray-400 text-center text-sm py-4 animate-pulse">Loading...</div>';
+            const { data, error } = await db
+                .from('scores')
+                .select('name, time, ms')
+                .order('ms', { ascending: true })
+                .limit(500);
+            leaderboardList.innerHTML = '';
+            if (error || !data || data.length === 0) {
+                leaderboardList.innerHTML = '<div class="text-gray-400 text-center text-sm py-4">No scores yet. Complete the puzzle!</div>';
+            } else {
+                // Deduplicate: keep only the best (lowest ms) entry per name
+                const best = new Map();
+                data.forEach(entry => {
+                    const key = entry.name.toLowerCase();
+                    if (!best.has(key) || entry.ms < best.get(key).ms) {
+                        best.set(key, entry);
+                    }
+                });
+                const top10 = [...best.values()]
+                    .sort((a, b) => a.ms - b.ms)
+                    .slice(0, 10);
+                top10.forEach((entry, i) => {
+                    leaderboardList.innerHTML += `
+                        <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                            <span class="text-gray-300 font-bold">${i + 1}. <span class="text-white">${entry.name}</span></span>
+                            <span class="text-[#baff29] text-xl">${entry.time}</span>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // Event Listeners
+        leaderboardBtn.addEventListener('click', async () => {
+            state = 'LEADERBOARD';
+            leaderboardBtn.classList.add('hidden');
+            leaderboardModal.classList.remove('hidden');
+            setTimeout(() => leaderboardModal.classList.add('visible'), 50);
+            await populateLeaderboard();
+        });
+
+        closeLeaderboardBtn.addEventListener('click', resetGame);
+        resetBtn.addEventListener('click', resetGame);
+
+        // Name Validation
+        playerNameInput.addEventListener('input', function (e) {
+            const invalid = /[^a-zA-Z0-9_]/.test(this.value);
+            if (invalid) {
+                this.value = this.value.replace(/[^a-zA-Z0-9_]/g, '');
+                nameError.classList.remove('hidden');
+                setTimeout(() => nameError.classList.add('hidden'), 2000);
+            }
+        });
+
+        submitBtn.addEventListener('click', async () => {
+            const name = playerNameInput.value.trim() || 'ANON';
+            submitBtn.disabled = true;
+            submitBtn.textContent = '...';
+
+            await db.from('scores').insert({ name, time: timerDisplay, ms: finalTimeMs });
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = '→';
+
+            // Hide win screen, show leaderboard
+            winScreen.classList.remove('visible');
+            setTimeout(async () => {
+                winScreen.classList.add('hidden');
+                await populateLeaderboard();
+                state = 'LEADERBOARD';
+                leaderboardModal.classList.remove('hidden');
+                setTimeout(() => leaderboardModal.classList.add('visible'), 50);
+            }, 300);
+        });
+
+
+        // MediaPipe setup
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+
+        // Main Frame Loop
+        hands.onResults((results) => {
+            if (loading.style.display !== 'none') {
+                loading.style.display = 'none';
+            }
+
+            const vRatio = video.videoWidth / video.videoHeight;
+            const cRatio = canvas.width / canvas.height;
+            let drawW, drawH;
+
+            if (vRatio > cRatio) {
+                drawH = canvas.height;
+                drawW = drawH * vRatio;
+            } else {
+                drawW = canvas.width;
+                drawH = drawW / vRatio;
+            }
+
+            offCtx.save();
+            offCtx.translate(canvas.width / 2, canvas.height / 2);
+            offCtx.scale(-1, 1);
+            offCtx.drawImage(results.image, -drawW / 2, -drawH / 2, drawW, drawH);
+            offCtx.restore();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(offCanvas, 0, 0);
+
+            let processedHands = [];
+            if (results.multiHandLandmarks) {
+                processedHands = results.multiHandLandmarks.map(landmarks => {
+                    return landmarks.map(point => ({
+                        x: (canvas.width / 2) + (drawW / 2) - (point.x * drawW),
+                        y: (canvas.height / 2) - (drawH / 2) + (point.y * drawH)
+                    }));
+                });
+            }
+
+            // --- GAME LOGIC & RENDERING ---
+
+            if (state === 'CAPTURE') {
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (processedHands.length >= 2) {
+                    const h1 = processedHands[0];
+                    const h2 = processedHands[1];
+
+                    const pts = [h1[4], h1[8], h2[4], h2[8]];
+                    const minX = Math.min(...pts.map(p => p.x));
+                    const maxX = Math.max(...pts.map(p => p.x));
+                    const minY = Math.min(...pts.map(p => p.y));
+                    const maxY = Math.max(...pts.map(p => p.y));
+
+                    const inset = 30;
+                    cropRect = {
+                        x: minX + inset,
+                        y: minY + inset,
+                        w: (maxX - minX) - (inset * 2),
+                        h: (maxY - minY) - (inset * 2)
+                    };
+
+                    if (cropRect.w > 100 && cropRect.h > 100) {
+                        ctx.strokeStyle = ACCENT_COLOR;
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([10, 10]);
+                        ctx.strokeRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+                        ctx.setLineDash([]);
+
+                        ctx.fillStyle = ACCENT_COLOR;
+                        ctx.font = "bold 14px 'JetBrains Mono'";
+                        ctx.fillText("PINCH TO CAPTURE", cropRect.x, cropRect.y - 15);
+
+                        if (isPinching(h1) && isPinching(h2)) {
+                            createPuzzle();
+                        }
+                    } else {
+                        cropRect = null;
+                    }
+                } else {
+                    cropRect = null;
+                }
+
+                processedHands.forEach(hand => drawHand(hand, isPinching(hand)));
+
+            }
+            else if (state === 'PUZZLE') {
+                timerDisplay = formatTime(Date.now() - startTime);
+
+                ctx.fillStyle = 'rgba(15, 15, 17, 0.85)';
+                ctx.fillRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+
+                const activeHand = processedHands.length > 0 ? processedHands[0] : null;
+                const handPinching = activeHand ? isPinching(activeHand) : false;
+                let pinchCenter = activeHand ? getPinchCenter(activeHand) : { x: 0, y: 0 };
+
+                // Logic for 5 second Fist-Hold Reset outside puzzle bounding box
+                let isHoldingFistOut = false;
+                let fistCenter = { x: 0, y: 0 };
+
+                if (activeHand) {
+                    const handCenter = activeHand[9];
+                    const isOutside = handCenter.x < cropRect.x || handCenter.x > cropRect.x + cropRect.w ||
+                        handCenter.y < cropRect.y || handCenter.y > cropRect.y + cropRect.h;
+
+                    if (isOutside && isFist(activeHand)) {
+                        isHoldingFistOut = true;
+                        fistCenter = handCenter;
+                    }
+                }
+
+                if (isHoldingFistOut) {
+                    if (!resetStartTime) resetStartTime = Date.now();
+                    const elapsedReset = Date.now() - resetStartTime;
+                    let progress = Math.min(elapsedReset / RESET_DURATION, 1.0);
+
+                    // Draw Reset Radial Progress
+                    ctx.save();
+                    ctx.translate(fistCenter.x, fistCenter.y);
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 45, -Math.PI / 2, (-Math.PI / 2) + (progress * Math.PI * 2));
+                    ctx.lineWidth = 6;
+                    ctx.strokeStyle = ACCENT_COLOR;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 12px "JetBrains Mono"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('RESETTING', 0, -5);
+                    ctx.font = '10px "JetBrains Mono"';
+                    ctx.fillText('Hold Fist', 0, 10);
+
+                    ctx.restore();
+
+                    if (progress >= 1.0) {
+                        resetStartTime = 0;
+                        resetGame();
+                    }
+                } else {
+                    resetStartTime = 0; // Cancel reset if un-clenched or moved inside
+                }
+
+                // Normal Puzzle Logic
+                if (activeHand && !isHoldingFistOut) {
+                    if (handPinching) {
+                        if (!draggingPiece) {
+                            draggingPiece = pieces.find(p => {
+                                const px = cropRect.x + p.currentC * p.w;
+                                const py = cropRect.y + p.currentR * p.h;
+                                return pinchCenter.x > px && pinchCenter.x < px + p.w &&
+                                    pinchCenter.y > py && pinchCenter.y < py + p.h;
+                            });
+                        }
+
+                        if (draggingPiece) {
+                            hoverGrid = {
+                                c: Math.floor((pinchCenter.x - cropRect.x) / draggingPiece.w),
+                                r: Math.floor((pinchCenter.y - cropRect.y) / draggingPiece.h)
+                            };
+
+                            if (hoverGrid.c < 0 || hoverGrid.c >= GRID_SIZE || hoverGrid.r < 0 || hoverGrid.r >= GRID_SIZE) {
+                                hoverGrid = null;
+                            }
+                        }
+                    } else {
+                        if (draggingPiece) {
+                            if (hoverGrid) {
+                                const targetPiece = pieces.find(p => p.currentC === hoverGrid.c && p.currentR === hoverGrid.r);
+                                if (targetPiece && targetPiece !== draggingPiece) {
+                                    const tempC = draggingPiece.currentC;
+                                    const tempR = draggingPiece.currentR;
+                                    draggingPiece.currentC = targetPiece.currentC;
+                                    draggingPiece.currentR = targetPiece.currentR;
+                                    targetPiece.currentC = tempC;
+                                    targetPiece.currentR = tempR;
+                                }
+                            }
+                            draggingPiece = null;
+                            hoverGrid = null;
+                            checkWin();
+                        }
+                    }
+                } else {
+                    draggingPiece = null;
+                    hoverGrid = null;
+                }
+
+                // Render Background Pieces
+                pieces.forEach(p => {
+                    if (p === draggingPiece) return;
+
+                    const dx = cropRect.x + p.currentC * p.w;
+                    const dy = cropRect.y + p.currentR * p.h;
+
+                    if (hoverGrid && hoverGrid.c === p.currentC && hoverGrid.r === p.currentR && draggingPiece) {
+                        ctx.fillStyle = 'rgba(186, 255, 41, 0.3)';
+                        ctx.fillRect(dx, dy, p.w, p.h);
+                        ctx.strokeStyle = ACCENT_COLOR;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(dx, dy, p.w, p.h);
+                    }
+
+                    ctx.drawImage(p.imgCanvas, dx, dy);
+
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(dx, dy, p.w, p.h);
+                });
+
+                // Render Dragged Piece
+                if (draggingPiece) {
+                    ctx.save();
+                    const drawX = pinchCenter.x - draggingPiece.w / 2;
+                    const drawY = pinchCenter.y - draggingPiece.h / 2;
+
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetY = 10;
+
+                    ctx.drawImage(draggingPiece.imgCanvas, drawX, drawY);
+
+                    ctx.strokeStyle = ACCENT_COLOR;
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(drawX, drawY, draggingPiece.w, draggingPiece.h);
+                    ctx.restore();
+                }
+
+                // Render Timer
+                ctx.fillStyle = ACCENT_COLOR;
+                ctx.font = "bold 24px 'JetBrains Mono'";
+                ctx.textAlign = "center";
+
+                // Draw timer pill
+                const timeTextW = ctx.measureText(timerDisplay).width;
+                ctx.fillStyle = 'rgba(15, 15, 17, 0.8)';
+                ctx.beginPath();
+                ctx.roundRect((canvas.width / 2) - (timeTextW / 2) - 30, cropRect.y - 45, timeTextW + 60, 36, 18);
+                ctx.fill();
+
+                ctx.fillStyle = ACCENT_COLOR;
+                ctx.fillText("⏱ " + timerDisplay, canvas.width / 2, cropRect.y - 19);
+                ctx.textAlign = "left";
+
+                // Draw Hands
+                processedHands.forEach(hand => drawHand(hand, isPinching(hand), true));
+
+            }
+            else if (state === 'WIN' || state === 'LEADERBOARD') {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (state === 'WIN') {
+                    ctx.save();
+                    ctx.shadowColor = ACCENT_COLOR;
+                    ctx.shadowBlur = 20;
+                    ctx.translate(cropRect.x, cropRect.y);
+
+                    pieces.forEach(p => {
+                        ctx.drawImage(p.imgCanvas, p.correctC * p.w, p.correctR * p.h);
+                    });
+
+                    ctx.strokeStyle = ACCENT_COLOR;
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(0, 0, cropRect.w, cropRect.h);
+                    ctx.restore();
+                }
+
+                processedHands.forEach(hand => drawHand(hand, false, false));
+            }
+        });
+
+        const camera = new Camera(video, {
+            onFrame: async () => {
+                await hands.send({ image: video });
+            },
+            width: 1280,
+            height: 720
+        });
+
+        camera.start();
+
+    </script>
+</body>
+
+</html>

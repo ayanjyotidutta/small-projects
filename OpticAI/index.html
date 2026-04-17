@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>OpticAI | Pro Edition</title>
+    <meta name="description"
+        content="The Elite Benchmark for Human Color Vision. Test your retinas against OpticAI's precision engine.">
+    <meta property="og:title" content="OpticAI | Human Vision Benchmark">
+    <meta property="og:description" content="Can you beat the 25 Score Elite Floor? Test your color intuition now.">
+    <meta property="og:type" content="website">
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Supabase JS client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: white;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Safe-area utility */
+        .pb-safe {
+            padding-bottom: max(24px, env(safe-area-inset-bottom));
+        }
+        .mb-safe {
+            margin-bottom: max(16px, env(safe-area-inset-bottom));
+        }
+
+        .mono {
+            font-family: 'Chivo Mono', monospace;
+        }
+
+        @keyframes heartbeat {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pulse-container {
+            animation: heartbeat 1s ease-in-out infinite;
+        }
+
+        @keyframes glow-pulse {
+            0% {
+                box-shadow: 6px 6px 14px #020202, -3px -3px 10px #1a1b1f;
+                border-color: rgba(255, 255, 255, 0.03);
+            }
+
+            50% {
+                box-shadow: 0 0 35px rgba(255, 255, 255, 0.6);
+                border-color: rgba(255, 255, 255, 0.5);
+            }
+
+            100% {
+                box-shadow: 6px 6px 14px #020202, -3px -3px 10px #1a1b1f;
+                border-color: rgba(255, 255, 255, 0.03);
+            }
+        }
+
+        .animate-glow {
+            animation: glow-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            70% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .pop-in {
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Streak flame glow */
+        @keyframes flameGlow {
+            0% {
+                text-shadow: 0 0 0px #ff6b00, 0 0 20px #ff6b00;
+            }
+
+            50% {
+                text-shadow: 0 0 5px #ff9500, 0 0 20px #ff6b00, 0 0 20px #ff3000;
+            }
+
+            100% {
+                text-shadow: 0 0 0px #ff6b00, 0 0 20px #ff6b00;
+            }
+        }
+
+        .flame-glow {
+            animation: flameGlow 1.5s ease-in-out infinite;
+        }
+
+        /* PB badge pulse */
+        @keyframes pbPulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(250, 204, 21, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+            }
+        }
+
+        .pb-pulse {
+            animation: pbPulse 1.5s ease-out 3;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+            outline: none;
+            width: 100%;
+            touch-action: pan-x;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: 3px solid #111;
+        }
+
+        /* Username input styling */
+        .username-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .username-input:focus {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .username-input::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .hue-slider {
+            background: linear-gradient(to right, red, #ff0, lime, cyan, blue, #f0f, red) !important;
+        }
+
+        .glass {
+            background: rgba(15, 15, 15, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stage-card {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .neu-btn {
+            background: linear-gradient(0deg, #0d0d0f, #080809);
+            box-shadow: 6px 6px 12px #020202, 3px 3px 8px #1a1b1f;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .neu-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 8px 8px 20px #010101, 4px 4px 10px #222429;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .neu-btn:active {
+            transform: translateY(-2px);
+            box-shadow: inset 4px 4px 8px #010101, inset 2px 2px 6px #1a1b1f;
+        }
+
+        .neu-btn-white {
+            background: #ffffff;
+            box-shadow: -6px -6px 14px #020202, 3px 3px 10px #1a1b1f;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .neu-btn-white:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 -10px 25px rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translate(-50%, 100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
+
+        .stage-card-interactive {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+
+        .stage-card-interactive:hover {
+            transform: translateY(-12px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        .toast {
+            animation: slideUp 0.3s ease-out forwards;
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .timer-svg {
+            transform: rotate(-90deg);
+        }
+
+        .timer-circle {
+            transition: stroke-dashoffset 1s linear;
+            stroke-dasharray: 100;
+        }
+
+        #picker-canvas {
+            border-radius: 16px;
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+            width: 100%;
+        }
+
+        .picker-cursor {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .picker-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(20px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        /* ═══════════════════════════════════════════════════════════════
+           SUPABASE CONFIG
+           Replace these two values with your actual credentials.
+        ═══════════════════════════════════════════════════════════════ */
+        const SUPABASE_URL = 'https://xejpvyrijkgcxntmdpyz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_Y9vx10ySrQGv-BAqJj1LCg_5FtPm9FA';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        /* ═══════════════════════════════════════════════════════════════
+           SUPABASE HELPERS
+        ═══════════════════════════════════════════════════════════════ */
+
+        // This function ensures the date is ALWAYS calculated based on India time, 
+        // regardless of where the user is physically located.
+        const getISTDate = (offsetDays = 0) => {
+            const date = new Date();
+            date.setDate(date.getDate() + offsetDays);
+            // 'en-CA' outputs YYYY-MM-DD. 'Asia/Kolkata' ensures the 12AM reset hits at IST.
+            return date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        };
+
+        // Get or create a user row, return username
+        const ensureUser = async (username) => {
+            const { data, error } = await supabase
+                .from('users')
+                .select('username')
+                .eq('username', username)
+                .single();
+            if (!data) {
+                await supabase.from('users').insert({ username });
+            }
+            return username;
+        };
+
+        // Save a completed game score
+        const saveScore = async (username, totalScore, tierLabel) => {
+            await supabase.from('scores').insert({
+                username,
+                total_score: totalScore,
+                tier_label: tierLabel,
+                played_at: new Date().toISOString()
+            });
+        };
+
+        // Get personal best for a username
+        const getPersonalBest = async (username) => {
+            const { data } = await supabase
+                .from('scores')
+                .select('total_score')
+                .eq('username', username)
+                .order('total_score', { ascending: false })
+                .limit(1);
+            return data && data.length > 0 ? data[0].total_score : null;
+        };
+
+        // Update streak logic
+        const updateStreak = async (username) => {
+            const today = getISTDate(0);    // Current date in India
+            const yesterday = getISTDate(-1); // Previous date in India
+
+            const { data } = await supabase
+                .from('streaks')
+                .select('*')
+                .eq('username', username)
+                .single();
+
+            if (!data) {
+                // First ever game — create streak row
+                await supabase.from('streaks').insert({
+                    username,
+                    current_streak: 1,
+                    longest_streak: 1,
+                    last_played_date: today
+                });
+                return { current_streak: 1, longest_streak: 1, isNew: true };
+            }
+
+            if (data.last_played_date === today) {
+                // Already played today — no change
+                return { current_streak: data.current_streak, longest_streak: data.longest_streak, isNew: false };
+            }
+
+            let newStreak;
+            if (data.last_played_date === yesterday) {
+                // Consecutive day — increment
+                newStreak = data.current_streak + 1;
+            } else {
+                // Gap — reset
+                newStreak = 1;
+            }
+
+            const newLongest = Math.max(newStreak, data.longest_streak);
+
+            await supabase.from('streaks').update({
+                current_streak: newStreak,
+                longest_streak: newLongest,
+                last_played_date: today
+            }).eq('username', username);
+
+            return { current_streak: newStreak, longest_streak: newLongest, isNew: newStreak === 1 && data.last_played_date !== yesterday };
+        };
+
+        // Load streak for display
+        const getStreak = async (username) => {
+            const { data } = await supabase
+                .from('streaks')
+                .select('*')
+                .eq('username', username)
+                .single();
+            return data || null;
+        };
+
+        // Get top 5 all-time leaderboard (best score per unique player)
+        const getLeaderboard = async () => {
+            const { data } = await supabase
+                .from('scores')
+                .select('username, total_score, tier_label, played_at')
+                .order('total_score', { ascending: false })
+                .limit(200);
+            if (!data) return [];
+            // Deduplicate: keep only each user's best score
+            const seen = new Set();
+            const top = [];
+            for (const row of data) {
+                if (!seen.has(row.username)) {
+                    seen.add(row.username);
+                    top.push(row);
+                }
+                if (top.length === 5) break;
+            }
+            return top;
+        };
+
+        /* ═══════════════════════════════════════════════════════════════
+           TIER SYSTEM
+        ═══════════════════════════════════════════════════════════════ */
+        const getTieredInfo = (score) => {
+            const s = Math.floor(score);
+            if (s >= 49) return { label: "DIVINE VISIONARY", quote: "Are you a monitor? Your retinas are cheating." };
+            if (s >= 48) return { label: "EYE OF THE TIGER", quote: "Pantone wants your location right now." };
+            if (s >= 47) return { label: "COLOR CONNOISSEUR", quote: "You see the spectrum others only dream of." };
+            if (s >= 46) return { label: "CHROMA MASTER", quote: "Absolute precision. Flawless execution." };
+            if (s >= 45) return { label: "SPECTRUM ELITE", quote: "Your color intuition is scarily accurate." };
+            if (s >= 44) return { label: "VISUAL ARCHITECT", quote: "A masterful display of light and hue." };
+            if (s >= 43) return { label: "OPTIC ACE", quote: "You've got the professional touch." };
+            if (s >= 42) return { label: "PIXEL PERFECT", quote: "Subtle nuances are your playground." };
+            if (s >= 41) return { label: "COLOR MAVEN", quote: "Remarkably close. You have the gift." };
+            if (s >= 40) return { label: "SHADE SPECIALIST", quote: "Strong grasp of the secondary layers." };
+            if (s >= 38) return { label: "VIBE CHECKER", quote: "You've got the vibe, just missing the nuances." };
+            if (s >= 35) return { label: "STEADY EYE", quote: "Solid work. The training is paying off." };
+            if (s >= 31) return { label: "COLOUR CURIOUS", quote: "Getting warmer. Focus on the saturation." };
+            const lowQuotes = [
+                "Is your 'Night Shift' mode on? Be honest.",
+                "You can do better. Squint a little harder next time.",
+                "Good effort, but your retinas need a recalibration.",
+                "The spectrum is wide, and you're just visiting.",
+                "Not quite there yet. Try it in a darker room?"
+            ];
+            return { label: "COLOR APPRENTICE", quote: lowQuotes[s % 5] };
+        };
+
+        const hslToRgb = (h, s, l) => {
+            s /= 100; l /= 100;
+            const k = n => (n + h / 30) % 12;
+            const a = s * Math.min(l, 1 - l);
+            const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+            return [255 * f(0), 255 * f(8), 255 * f(4)];
+        };
+
+        const generateColor = (round) => {
+            const h = Math.floor(Math.random() * 360);
+            if (round === 1) return [h, 90, 50];
+            if (round === 3) return [h, 20, 80];
+            if (round === 5) return [h, 15, 40];
+            return [h, 50, 45];
+        };
+
+        const formatMs = (ms) => {
+            const s = Math.floor(ms / 1000);
+            const m = Math.floor((ms % 1000) / 10);
+            return `${s}.${m.toString().padStart(2, '0')}`;
+        };
+
+        /* ═══════════════════════════════════════════════════════════════
+           USERNAME MODAL COMPONENT
+        ═══════════════════════════════════════════════════════════════ */
+        function UsernameModal({ onConfirm }) {
+            const [input, setInput] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            const handleSubmit = async () => {
+                const trimmed = input.trim().replace(/\s+/g, '_');
+                if (trimmed.length < 2) { setError('At least 2 characters please.'); return; }
+                if (trimmed.length > 20) { setError('Max 20 characters.'); return; }
+                if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) { setError('Letters, numbers and _ only.'); return; }
+
+                setLoading(true);
+                setError('');
+                try {
+                    await ensureUser(trimmed);
+                    localStorage.setItem('opticai_username', trimmed);
+                    onConfirm(trimmed);
+                } catch (e) {
+                    setError('Something went wrong. Try again.');
+                }
+                setLoading(false);
+            };
+
+            const handleKey = (e) => { if (e.key === 'Enter') handleSubmit(); };
+
+            return (
+                <div className="modal-overlay">
+                    <div className="fade-in-up bg-[#0a0a0a] border border-white/10 rounded-[40px] p-6 md:p-10 w-full max-w-sm flex flex-col gap-5 text-center">
+                        <div>
+                            <div className="text-4xl mb-3">👁️</div>
+                            <h2 className="text-white font-black text-2xl tracking-tight mb-1">Enter Your Username</h2>
+                            <p className="text-zinc-500 text-xs leading-relaxed">Your streak and personal best will be saved across sessions. Remember EXACT username (it will be like your password to your streak count.</p>
+                        </div>
+
+                        <div className="flex flex-col gap-3">
+                            <input
+                                className="username-input w-full px-5 py-4 rounded-2xl text-center font-black text-5 "
+                                placeholder="e.g. Ayan_dutta (case sentitive)"
+                                value={input}
+                                onChange={e => { setInput(e.target.value); setError(''); }}
+                                onKeyDown={handleKey}
+                                maxLength={20}
+                                autoFocus
+                            />
+                            {error && <p className="text-red-400 text-xs font-bold">{error}</p>}
+                        </div>
+
+                        <button
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="neu-btn-white animate-glow text-black py-4 rounded-full font-black text-lg tracking-wide disabled:opacity-50"
+                        >
+                            {loading ? 'Saving...' : 'Start Playing →'}
+                        </button>
+
+                        <p className="text-zinc-700 text-[10px]">No password needed. Username is your identity.</p>
+                    </div>
+                </div>
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           COMPONENT: ColorPicker2D
+        ═══════════════════════════════════════════════════════════════ */
+        function ColorPicker2D({ color, onChange }) {
+            const canvasRef = useRef(null);
+            const stripRef = useRef(null);
+            const dragging = useRef(false);
+            const stripDrag = useRef(false);
+
+            const [hue, sat, lit] = color.hsl;
+            const cursorX = sat / 100;
+            const cursorY = 1 - (lit / 100);
+
+            const drawCanvas = useCallback(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                const W = canvas.width, H = canvas.height;
+                ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`; ctx.fillRect(0, 0, W, H);
+                const wg = ctx.createLinearGradient(0, 0, W, 0);
+                wg.addColorStop(0, 'rgba(255,255,255,1)'); wg.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
+                const bg = ctx.createLinearGradient(0, 0, 0, H);
+                bg.addColorStop(0, 'rgba(0,0,0,0)'); bg.addColorStop(1, 'rgba(0,0,0,1)');
+                ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+            }, [hue]);
+
+            const drawStrip = useCallback(() => {
+                const canvas = stripRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const W = canvas.width, H = canvas.height;
+                const grad = ctx.createLinearGradient(0, 0, W, 0);
+                [0, 60, 120, 180, 240, 300, 360].forEach((h, i) => grad.addColorStop(i / 6, `hsl(${h},100%,50%)`));
+                ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+            }, []);
+
+            useEffect(() => { drawCanvas(); }, [drawCanvas]);
+            useEffect(() => { drawStrip(); }, [drawStrip]);
+
+            const sampleAndChange = (clientX, clientY, currentHue) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                const xp = Math.max(0.01, Math.min(0.99, (clientX - rect.left) / rect.width));
+                const yp = Math.max(0.01, Math.min(0.99, (clientY - rect.top) / rect.height));
+                const px = ctx.getImageData(xp * canvas.width, yp * canvas.height, 1, 1).data;
+                onChange({ hsl: [currentHue, Math.round(xp * 100), Math.round((1 - yp) * 100)], rgb: [px[0], px[1], px[2]] });
+            };
+
+            const updateHue = (clientX) => {
+                const rect = stripRef.current.getBoundingClientRect();
+                const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                const newHue = Math.round(x * 360);
+                const cr = canvasRef.current.getBoundingClientRect();
+                sampleAndChange(cr.left + cursorX * cr.width, cr.top + cursorY * cr.height, newHue);
+            };
+
+            useEffect(() => {
+                const up = () => { dragging.current = false; stripDrag.current = false; };
+                window.addEventListener('mouseup', up);
+                window.addEventListener('touchend', up);
+                return () => { window.removeEventListener('mouseup', up); window.removeEventListener('touchend', up); };
+            }, [cursorX, cursorY]);
+
+            return (
+                <div className="flex flex-col gap-4 w-full">
+                    <div className="picker-wrap rounded-2xl overflow-hidden" style={{ aspectRatio: '1 / 0.7' }}>
+                        <canvas ref={canvasRef} id="picker-canvas" width={400} height={280}
+                            onMouseDown={e => { dragging.current = true; sampleAndChange(e.clientX, e.clientY, hue); }}
+                            onMouseMove={e => { if (dragging.current) sampleAndChange(e.clientX, e.clientY, hue); }}
+                            onTouchStart={e => { dragging.current = true; sampleAndChange(e.touches[0].clientX, e.touches[0].clientY, hue); }}
+                            onTouchMove={e => { if (dragging.current) sampleAndChange(e.touches[0].clientX, e.touches[0].clientY, hue); }}
+                        />
+                        <div className="picker-cursor" style={{ left: `${cursorX * 100}%`, top: `${cursorY * 100}%`, background: `rgb(${color.rgb[0]},${color.rgb[1]},${color.rgb[2]})` }} />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Hue • {hue}°</label>
+                        <div className="relative" style={{ height: '28px' }}>
+                            <canvas ref={stripRef} width={400} height={28} className="w-full h-full rounded-lg cursor-crosshair"
+                                onMouseDown={e => { stripDrag.current = true; updateHue(e.clientX); }}
+                                onMouseMove={e => { if (stripDrag.current) updateHue(e.clientX); }}
+                                onTouchStart={e => { stripDrag.current = true; updateHue(e.touches[0].clientX); }}
+                                onTouchMove={e => { if (stripDrag.current) updateHue(e.touches[0].clientX); }}
+                            />
+                            <div style={{ position: 'absolute', left: `${(hue / 360) * 100}%`, top: '50%', transform: 'translate(-50%,-50%)', width: '18px', height: '18px', borderRadius: '50%', border: '3px solid white', background: `hsl(${hue},100%,50%)`, pointerEvents: 'none' }} />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 text-[10px] mono text-white/30 font-bold tracking-widest">
+                        <span>H {hue}°</span><span>·</span><span>S {sat}%</span><span>·</span><span>L {lit}%</span>
+                    </div>
+                </div>
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           COMPONENT: LeaderboardView
+        ═══════════════════════════════════════════════════════════════ */
+        function LeaderboardView({ currentUsername }) {
+            const [leaders, setLeaders] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                (async () => {
+                    setLoading(true);
+                    const data = await getLeaderboard();
+                    setLeaders(data);
+                    setLoading(false);
+                })();
+            }, []);
+
+            const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
+            return (
+                <div className="w-full max-w-lg mx-auto mt-4 mb-10 fade-in-up">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-white font-black text-2xl tracking-tight">Global Leaderboard</h2>
+                        <span className="text-zinc-600 text-xs font-bold uppercase tracking-widest">All-Time Top 5</span>
+                    </div>
+
+                    {loading && (
+                        <div className="flex justify-center py-16">
+                            <div className="text-zinc-600 font-bold uppercase tracking-widest text-xs animate-pulse">Loading...</div>
+                        </div>
+                    )}
+
+                    {!loading && leaders && leaders.length === 0 && (
+                        <div className="text-center py-16 text-zinc-700 text-sm font-bold">No scores yet. Be the first!</div>
+                    )}
+
+                    {!loading && leaders && leaders.length > 0 && (
+                        <div className="flex flex-col gap-3">
+                            {leaders.map((entry, i) => {
+                                const isMe = currentUsername && entry.username === currentUsername;
+                                return (
+                                    <div
+                                        key={entry.username}
+                                        className={`flex items-center gap-4 px-6 py-4 rounded-[24px] border transition-all ${
+                                            i === 0
+                                                ? 'bg-yellow-400/10 border-yellow-400/30'
+                                                : isMe
+                                                ? 'bg-white/8 border-white/20'
+                                                : 'bg-white/[0.03] border-white/[0.06]'
+                                        }`}
+                                    >
+                                        <span className="text-2xl w-8 text-center">{medals[i]}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <div className={`font-black text-sm truncate ${i === 0 ? 'text-yellow-300' : 'text-white'}`}>
+                                                {entry.username}{isMe && <span className="ml-2 text-zinc-500 text-[10px] font-bold uppercase tracking-wider">you</span>}
+                                            </div>
+                                            <div className="text-zinc-600 text-[10px] font-bold uppercase tracking-wider mt-0.5">{entry.tier_label}</div>
+                                        </div>
+                                        <div className={`mono font-black text-xl ${i === 0 ? 'text-yellow-300' : 'text-white'}`}>
+                                            {Number(entry.total_score).toFixed(2)}
+                                            <span className="text-zinc-700 text-xs ml-1">/50</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        /* ═══════════════════════════════════════════════════════════════
+           MAIN COMPONENT: ColorGame
+        ═══════════════════════════════════════════════════════════════ */
+        function ColorGame() {
+            const [round, setRound] = useState(1);
+            const [stage, setStage] = useState('start');
+            const [targetColor, setTargetColor] = useState([0, 0, 0]);
+            const [guessColor, setGuessColor] = useState({ hsl: [180, 60, 50], rgb: [51, 204, 204] });
+            const [history, setHistory] = useState([]);
+            const [msTimer, setMsTimer] = useState(5000);
+            const [guessTimer, setGuessTimer] = useState(30);
+            const [toast, setToast] = useState(null);
+            const [resultTimer, setResultTimer] = useState(5);
+            const [showVideo, setShowVideo] = useState(false);
+
+            // ── New state for username + streak + personal best ──
+            const [username, setUsername] = useState(() => localStorage.getItem('opticai_username') || null);
+            const [showUsernameModal, setShowUsernameModal] = useState(false);
+            const [streakData, setStreakData] = useState(null);   // { current_streak, longest_streak }
+            const [personalBest, setPersonalBest] = useState(null);   // number or null
+            const [isNewPB, setIsNewPB] = useState(false);  // true if this run beats PB
+            const [isSaving, setIsSaving] = useState(false);
+            const [activeTab, setActiveTab] = useState('play'); // 'play' | 'leaderboard'
+
+            // Load streak + PB when username is known
+            useEffect(() => {
+                if (!username) return;
+                (async () => {
+                    const [streak, pb] = await Promise.all([
+                        getStreak(username),
+                        getPersonalBest(username)
+                    ]);
+                    setStreakData(streak);
+                    setPersonalBest(pb);
+                })();
+            }, [username]);
+
+            // ── Timers ──────────────────────────────────────────────
+            useEffect(() => {
+                let id;
+                if (stage === 'memorize' && msTimer > 0) {
+                    id = setInterval(() => setMsTimer(p => Math.max(0, p - 4)), 4);
+                } else if (stage === 'memorize' && msTimer <= 0) {
+                    setStage('guess'); setGuessTimer(30);
+                }
+                return () => clearInterval(id);
+            }, [stage, msTimer]);
+
+            useEffect(() => {
+                let id;
+                if (stage === 'guess' && guessTimer > 0) {
+                    id = setInterval(() => setGuessTimer(t => t - 1), 1000);
+                } else if (stage === 'guess' && guessTimer === 0) {
+                    submitGuess();
+                }
+                return () => clearInterval(id);
+            }, [stage, guessTimer]);
+
+            useEffect(() => {
+                let id;
+                if (stage === 'result' && resultTimer > -1) {
+                    id = setInterval(() => setResultTimer(t => t - 1), 1000);
+                } else if (stage === 'result' && resultTimer === -1) {
+                    next();
+                }
+                return () => clearInterval(id);
+            }, [stage, resultTimer]);
+
+            // ── MAC DEBUG: start//
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        if (stage === 'guess') submitGuess();
+                        if (stage === 'result') next();
+                    }
+
+                    // MAC DEBUG: Option + 5 (Jump to Round 5 with 4 random rounds)
+                    if (e.altKey && (e.key === '5' || e.code === 'Digit5')) {
+                        e.preventDefault();
+                        setRound(5);
+                        setTargetColor(generateColor(5));
+                        setMsTimer(5000);
+                        setStage('memorize');
+
+                        // Rounds 1-4 get random scores 1.0 to 10.0
+                        setHistory([1, 2, 3, 4].map(r => ({
+                            round: r,
+                            target: [Math.random() * 360, 70, 50],
+                            guess: `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`,
+                            score: parseFloat(((Math.random() * 9) + 1).toFixed(2))
+                        })));
+                    }
+
+                    // MAC DEBUG: Option + 3 (Jump to Final Results)
+                    if (e.altKey && (e.key === '3' || e.code === 'Digit3')) {
+                        e.preventDefault();
+                        // All 5 rounds get random scores 1.0 to 10.0
+                        setHistory([1, 2, 3, 4, 5].map(r => ({
+                            round: r,
+                            target: [Math.random() * 360, 70, 50],
+                            guess: `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`,
+                            score: parseFloat(((Math.random() * 9) + 1).toFixed(2))
+                        })));
+                        setStage('final');
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [stage, guessColor, targetColor]);
+            // MAC DEBUG: END*/
+
+            // ── Score Calculation ────────────────────────────────────
+            const submitGuess = () => {
+                const [tr, tg, tb] = hslToRgb(...targetColor);
+                const [gr, gg, gb] = guessColor.rgb;
+                const dist = Math.sqrt((tr - gr) ** 2 + (tg - gg) ** 2 + (tb - gb) ** 2);
+                const acc = 1 - (dist / 441.67);
+                const t = 0.7;
+                const breakScore = 10 * Math.pow(t, 1.7);
+                let finalScore;
+                if (acc < t) {
+                    finalScore = 10 * Math.pow(acc, 1.7);
+                } else {
+                    const rem = (acc - t) / (1 - t);
+                    finalScore = breakScore + (10 - breakScore) * Math.sqrt(rem);
+                }
+                const s = parseFloat(Math.min(10, finalScore).toFixed(2));
+                setHistory(p => [...p, { round, target: [...targetColor], guess: `rgb(${gr},${gg},${gb})`, score: s }]);
+                setResultTimer(5); setStage('result');
+            };
+
+            const next = () => {
+                setResultTimer(-2);
+                if (round < 5) {
+                    const nr = round + 1;
+                    setRound(nr);
+                    setTargetColor(generateColor(nr));
+                    setGuessColor({ hsl: [180, 60, 50], rgb: [51, 204, 204] });
+                    setMsTimer(5000);
+                    setStage('memorize');
+                } else {
+                    setStage('final');
+                }
+            };
+
+            // ── Save to Supabase when final screen loads ─────────────
+            useEffect(() => {
+                if (stage !== 'final' || !username || history.length < 5) return;
+                (async () => {
+                    setIsSaving(true);
+                    const rawTotal = history.reduce((a, b) => a + b.score, 0);
+                    const tier = getTieredInfo(rawTotal);
+
+                    // Save score
+                    await saveScore(username, parseFloat(rawTotal.toFixed(2)), tier.label);
+
+                    // Update streak
+                    const newStreak = await updateStreak(username);
+                    setStreakData({ current_streak: newStreak.current_streak, longest_streak: newStreak.longest_streak });
+
+                    // Check personal best
+                    const prevPB = personalBest;
+                    if (prevPB === null || rawTotal > prevPB) {
+                        setIsNewPB(true);
+                        setPersonalBest(parseFloat(rawTotal.toFixed(2)));
+                    }
+                    setIsSaving(false);
+                })();
+            }, [stage]);
+
+            const triggerToast = (msg) => {
+                setToast(msg);
+                setTimeout(() => setToast(null), 2500);
+            };
+
+            const copyGameLink = () => {
+                navigator.clipboard.writeText(window.location.href).then(() => triggerToast("Game Link Copied!"));
+            };
+
+            const copyScoreCard = (tier, display, streak) => {
+                const streakLine = streak ? `🔥 ${streak}-day streak` : '';
+                const text = `OpticAI Result 👁️\n\nScore: ${display}/50\nTier: ${tier.label}\n${streakLine}\n\n"${tier.quote}"\n\nCan you beat me? → ${window.location.href}`;
+                navigator.clipboard.writeText(text).then(() => triggerToast("Score Card Copied!"));
+            };
+
+            const handleStartGame = () => {
+                if (!username) {
+                    setShowUsernameModal(true);
+                } else {
+                    setTargetColor(generateColor(1));
+                    setStage('memorize');
+                    setMsTimer(5000);
+                }
+            };
+
+            const handleUsernameConfirm = async (uname) => {
+                setUsername(uname);
+                setShowUsernameModal(false);
+                // Load their data
+                const [streak, pb] = await Promise.all([getStreak(uname), getPersonalBest(uname)]);
+                setStreakData(streak);
+                setPersonalBest(pb);
+                // Start game
+                setTargetColor(generateColor(1));
+                setStage('memorize');
+                setMsTimer(5000);
+            };
+
+            /* ══════════════════════════════════════════════════════════
+               STAGE: start
+            ══════════════════════════════════════════════════════════ */
+            if (stage === 'start') return (
+                <div className="min-h-screen flex flex-col items-center px-4 md:px-8 text-center bg-[#050505]">
+                    {showUsernameModal && <UsernameModal onConfirm={handleUsernameConfirm} />}
+
+                    {/* Username chip — top right if already logged in */}
+                    {username && (
+                        <div className="fixed top-3 right-3 z-50 flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-full max-w-[180px]">
+                            {streakData && <span className="flame-glow text-xs truncate">🔥 <span className="text-zinc-400 font-black">{streakData.current_streak}</span> streak</span>}
+                        </div>
+                    )}
+
+                    <h1 className="font-black italic mt-10 mb-6 tracking-tighter select-none" style={{ fontSize: 'clamp(48px, 16vw, 96px)' }}>
+                        Optic<span className="text-zinc-500">AI</span>
+                    </h1>
+
+                    {/* Tab Bar */}
+                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 mb-8 w-full max-w-xs">
+                        <button
+                            onClick={() => setActiveTab('play')}
+                            className={`flex-1 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'play' ? 'bg-white text-black' : 'text-zinc-500'}`}
+                        >
+                            Play
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('leaderboard')}
+                            className={`flex-1 py-3 rounded-full font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'leaderboard' ? 'bg-white text-black' : 'text-zinc-500'}`}
+                        >
+                            🏆 Top 5
+                        </button>
+                    </div>
+
+                    {/* ── TAB: LEADERBOARD ── */}
+                    {activeTab === 'leaderboard' && (
+                        <div className="w-full max-w-lg">
+                            <LeaderboardView currentUsername={username} />
+                        </div>
+                    )}
+
+                    {/* ── TAB: PLAY ── */}
+                    {activeTab === 'play' && (
+                        <>
+                            {/* Personal best banner */}
+                            {username && personalBest !== null && (
+                                <div className="mb-6 fade-in-up flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 px-5 py-2.5 rounded-full">
+                                    <span className="text-yellow-400">🏆</span>
+                                    <span className="text-yellow-400 font-black text-xs tracking-wider">PB: <span className="mono">{personalBest.toFixed(2)}/50</span></span>
+                                </div>
+                            )}
+
+                            {/* Instruction cards — compact rows on mobile, 3-col grid on desktop */}
+                            <div className="w-full max-w-5xl mb-6">
+                                {/* Mobile: compact horizontal rows */}
+                                <div className="flex flex-col gap-2 md:hidden">
+                                    {[
+                                        { icon: '👁️', title: 'Stare', desc: '5 sec — burn the colour into your retinas' },
+                                        { icon: '🎨', title: 'Match', desc: '30 sec — pick the closest colour you can' },
+                                        { icon: '⚖️', title: 'Score', desc: 'Aim for 7+ each round out of 10' },
+                                    ].map(({ icon, title, desc }) => (
+                                        <div key={title} className="flex items-center gap-3 bg-white/5 border border-white/5 rounded-2xl px-4 py-3">
+                                            <span className="text-2xl shrink-0">{icon}</span>
+                                            <div className="text-left min-w-0">
+                                                <span className="font-black text-[12px] uppercase tracking-widest text-zinc-100 mr-2">{title}</span>
+                                                <span className="text-[11px] text-zinc-500 font-medium">{desc}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Desktop: full cards */}
+                                <div className="hidden md:grid md:grid-cols-3 gap-4">
+                                    <div className="bg-white/5 p-5 rounded-[28px] border border-white/5 space-y-2">
+                                        <div className="text-3xl">👁️</div>
+                                        <h3 className="font-black text-[13px] tracking-[0.1em] uppercase text-zinc-100">Stare</h3>
+                                        <p className="text-xs text-zinc-400 leading-relaxed font-medium italic">5 seconds. Burn the color into your retinas — Don't blink!</p>
+                                    </div>
+                                    <div className="bg-white/5 p-5 rounded-[28px] border border-white/5 space-y-2">
+                                        <div className="text-3xl">🎨</div>
+                                        <h3 className="font-black text-[13px] tracking-[0.1em] uppercase text-zinc-100">Match</h3>
+                                        <p className="text-xs text-zinc-400 leading-relaxed font-medium italic">30 seconds to guess the colour. It's your time to shine!</p>
+                                    </div>
+                                    <div className="bg-white/5 p-5 rounded-[28px] border border-white/5 space-y-2">
+                                        <div className="text-3xl">⚖️</div>
+                                        <h3 className="font-black text-[13px] tracking-[0.1em] uppercase text-zinc-100">Score</h3>
+                                        <p className="text-xs text-zinc-400 leading-relaxed font-medium italic">Aim for a "7" or higher score each round.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col items-center gap-5 mb-10 w-full max-w-xs md:max-w-none">
+                                <button
+                                    onClick={handleStartGame}
+                                    className="neu-btn-white animate-glow text-black w-full md:w-auto px-10 h-16 rounded-full font-black tracking-[0.05em] text-xl flex items-center justify-center gap-4 group transition-all active:scale-95"
+                                >
+                                    <span className="group-hover:text-zinc-500 transition-colors duration-300">Start OpticAI</span>
+                                    <div className="bg-black/5 w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-black/10 transition-colors">
+                                        <svg className="w-4 h-4 text-black/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 13L15 9M15 9H9M15 9V15" /><circle cx="12" cy="12" r="10" />
+                                        </svg>
+                                    </div>
+                                </button>
+
+                                {username && (
+                                    <button
+                                        onClick={() => { localStorage.removeItem('opticai_username'); setUsername(null); setStreakData(null); setPersonalBest(null); }}
+                                        className="text-zinc-700 hover:text-zinc-400 text-[11px] font-bold uppercase tracking-widest transition-colors"
+                                    >
+                                        Switch User
+                                    </button>
+                                )}
+
+                                <button onClick={() => setShowVideo(true)} className="flex items-center gap-3 text-zinc-500 hover:text-white transition-all duration-300 group cursor-pointer">
+                                    <div className="w-8 h-8 rounded-full border border-zinc-800 flex items-center justify-center group-hover:border-white transition-colors">
+                                        <svg className="w-3 h-3 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M3 22v-20l18 10-18 10z" /></svg>
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em]">Watch Demo</span>
+                                </button>
+
+                                {showVideo && (
+                                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                                        <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setShowVideo(false)} />
+                                        <div className="relative w-full max-w-4xl aspect-video bg-zinc-900 rounded-[32px] overflow-hidden border border-white/10 shadow-2xl">
+                                            <button onClick={() => setShowVideo(false)} className="absolute top-6 right-6 z-10 bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-white hover:text-black transition-all font-bold">✕</button>
+                                            <iframe
+                                                className="w-full h-full"
+                                                src={"https://www.youtube.com/embed/8K8JRp7aBOs?autoplay=1"}
+                                                title="OpticAI Demo"
+                                                frameBorder="0"
+                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                allowFullScreen>
+                                            </iframe>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <p className="text-sm font-bold tracking-[0.05em] text-white/40 mb-8">5 Colours · 5 Rounds · Are your eyes lying to you?</p>
+                        </>
+                    )}
+
+                    <div className="mt-auto pb-safe pt-4 text-[13px] font-bold tracking-[0.05em] text-zinc-700">Made by Ayan Jyoti Dutta 😇</div>
+                </div>
+            );
+
+            /* ══════════════════════════════════════════════════════════
+               STAGE: memorize
+            ══════════════════════════════════════════════════════════ */
+            if (stage === 'memorize') return (
+                <div className="h-screen w-full flex flex-col items-center justify-center pulse-container" style={{ backgroundColor: `hsl(${targetColor[0]}, ${targetColor[1]}%, ${targetColor[2]}%)` }}>
+                    <h2 className="text-white font-black tracking-widest uppercase mb-8 text-xl">Memorise the colour</h2>
+                    <div className="bg-black/40 backdrop-blur-2xl rounded-[40px] px-16 py-10 border border-white/10">
+                        <div className="text-[80px] font-black mono text-white leading-none tracking-tighter">{formatMs(msTimer)}</div>
+                    </div>
+                </div>
+            );
+
+            /* ══════════════════════════════════════════════════════════
+               STAGE: guess
+            ══════════════════════════════════════════════════════════ */
+            if (stage === 'guess') return (
+                <div className="h-screen w-full relative flex flex-col items-center justify-end md:justify-center" style={{ backgroundColor: `rgb(${guessColor.rgb[0]}, ${guessColor.rgb[1]}, ${guessColor.rgb[2]})` }}>
+                    <h2 className="absolute top-20 md:top-24 text-white font-black tracking-widest uppercase text-base md:text-xl drop-shadow-2xl">Guess the colour</h2>
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-xl px-8 py-2.5 rounded-full border border-white/10">
+                        <span className="mono font-bold text-xl text-white">{guessTimer}s</span>
+                    </div>
+                    <div className="w-full md:absolute md:top-24 md:right-8 md:bottom-8 md:w-80 glass rounded-t-[36px] md:rounded-[40px] px-5 pt-5 pb-safe md:p-6 flex flex-col gap-4 z-10 shadow-2xl">
+                        <ColorPicker2D color={guessColor} onChange={setGuessColor} />
+                        <button onClick={submitGuess} className="neu-btn text-white py-4 rounded-2xl font-black uppercase tracking-widest text-base active:scale-95 transition-transform">Lock it In</button>
+                    </div>
+                </div>
+            );
+
+            /* ══════════════════════════════════════════════════════════
+               STAGE: result
+            ══════════════════════════════════════════════════════════ */
+            if (stage === 'result') return (
+                <div className="h-screen flex flex-col bg-black relative">
+                    <div className="flex-1" style={{ backgroundColor: `hsl(${targetColor[0]}, ${targetColor[1]}%, ${targetColor[2]}%)` }}>
+                        <div className="absolute top-8 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-white uppercase font-black">Original</div>
+                    </div>
+                    <div className="flex-1" style={{ backgroundColor: `rgb(${guessColor.rgb[0]}, ${guessColor.rgb[1]}, ${guessColor.rgb[2]})` }}>
+                        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-white uppercase font-black">Your Colour</div>
+                    </div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-6 w-full px-6">
+                        <div className="bg-white text-black px-12 py-6 rounded-[32px] shadow-xl text-center">
+                            <div className="text-6xl font-black mono">{history[history.length - 1]?.score}</div>
+                        </div>
+                        <button onClick={next} className="neu-btn px-10 py-3 rounded-full font-black text-white flex items-center gap-4 active:scale-95 transition-all">
+                            {round === 5 ? "Results" : "Next"}
+                            <div className="relative w-8 h-8 flex items-center justify-center">
+                                <svg className="timer-svg w-full h-full" viewBox="0 0 36 36">
+                                    <circle className="stroke-white/10 fill-none" strokeWidth="3" cx="18" cy="18" r="16" />
+                                    <circle className="timer-circle stroke-white fill-none" strokeWidth="3" cx="18" cy="18" r="16" style={{ strokeDashoffset: (resultTimer / 5) * 100 }} />
+                                </svg>
+                                <span className="absolute text-[10px] mono">{resultTimer > 0 ? resultTimer : 0}</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div className="absolute inset-x-0 h-px bg-white/20 top-1/2 z-10" />
+                </div>
+            );
+
+            /* ══════════════════════════════════════════════════════════
+               STAGE: final
+            ══════════════════════════════════════════════════════════ */
+            if (stage === 'final') {
+                const rawTotal = history.reduce((a, b) => a + b.score, 0);
+                const decimalPart = rawTotal % 1;
+                const displayPB = personalBest !== null ? personalBest.toFixed(2) : (rawTotal + 1).toFixed(2);
+                const retryText = `Try Beating ${displayPB} Score`;
+                const tier = getTieredInfo(rawTotal);
+
+                return (
+                    <div className="min-h-screen w-full bg-[#080808] px-4 py-6 md:p-10 flex flex-col items-center overflow-y-auto">
+                        {toast && <div className="bg-white text-black px-8 py-3 rounded-full text-[10px] font-black uppercase toast">{toast}</div>}
+
+                        {/* ── Streak + PB Stats Bar ── */}
+                        {username && (
+                            <div className="fade-in-up mt-8 mb-4 flex items-center gap-4 flex-wrap justify-center">
+                                {streakData && (
+                                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-5 py-3 rounded-full">
+                                        <span className="flame-glow text-xl">🔥</span>
+                                        <div className="flex flex-col">
+                                            <span className="mono font-black text-white text-lg leading-none">{streakData.current_streak}</span>
+                                            <span className="text-zinc-600 text-[9px] uppercase tracking-widest font-bold">Day Streak</span>
+                                        </div>
+                                        {streakData.longest_streak > 1 && (
+                                            <div className="ml-2 pl-2 border-l border-white/10 flex flex-col">
+                                                <span className="mono font-black text-zinc-400 text-sm leading-none">{streakData.longest_streak}</span>
+                                                <span className="text-zinc-700 text-[9px] uppercase tracking-widest font-bold">Best</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Personal Best badge */}
+                                {isNewPB ? (
+                                    <div className="pop-in pb-pulse flex items-center gap-2 bg-yellow-400/15 border border-yellow-400/40 px-5 py-3 rounded-full">
+                                        <span className="text-xl">🏆</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-yellow-400 font-black text-xs uppercase tracking-wider">New Personal Best!</span>
+                                            <span className="mono font-black text-yellow-300 text-lg leading-none">{rawTotal.toFixed(2)}/50</span>
+                                        </div>
+                                    </div>
+                                ) : personalBest !== null && (
+                                    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-5 py-3 rounded-full">
+                                        <span className="text-xl">🏆</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-zinc-400 font-black text-[9px] uppercase tracking-wider">Personal Best</span>
+                                            <span className="mono font-black text-white text-lg leading-none">{personalBest.toFixed(2)}/50</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isSaving && <span className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest">Saving...</span>}
+                            </div>
+                        )}
+
+                        {/* Tier + Score */}
+                        <div className="text-center mt-4 mb-10">
+                            <h2 className="text-blue-400 font-black tracking-widest uppercase mb-3 italic text-sm md:text-base">{tier.label}</h2>
+                            <div className="font-black mono text-white" style={{ fontSize: 'clamp(56px, 18vw, 80px)' }}>
+                                {rawTotal.toFixed(2)}<span className="text-zinc-700 text-2xl md:text-4xl ml-2">/50</span>
+                            </div>
+                            <p className="text-zinc-500 italic text-sm px-4">"{tier.quote}"</p>
+                        </div>
+
+                        {/* Round cards — always 5-col grid, compact on mobile */}
+                        <div className="w-full max-w-6xl mb-8 px-0">
+                            <div className="grid grid-cols-5 gap-2 md:gap-4">
+                                {history.map((h, i) => (
+                                    <div key={i} className="stage-card-interactive bg-[#111] border border-zinc-800 rounded-2xl md:rounded-[28px] p-2 md:p-4 flex flex-col gap-2">
+                                        <div className="flex justify-between text-[9px] md:text-[10px] font-black text-zinc-600 uppercase">
+                                            <span>S{i + 1}</span><span>{h.score}</span>
+                                        </div>
+                                        <div className="rounded-lg md:rounded-xl overflow-hidden border border-zinc-900" style={{ aspectRatio: '1 / 1.2' }}>
+                                            <div className="h-1/2 w-full" style={{ backgroundColor: `hsl(${h.target[0]}, ${h.target[1]}%, ${h.target[2]}%)` }} />
+                                            <div className="h-1/2 w-full" style={{ backgroundColor: h.guess }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Share console */}
+                        <div className="flex flex-col items-center gap-4 mb-safe w-full max-w-md px-0">
+                            <div className="flex flex-row items-center gap-4 w-full">
+                                <button onClick={copyGameLink} className="neu-btn-white w-16 h-16 rounded-full flex items-center justify-center group shrink-0 active:scale-90">
+                                    <svg className="w-6 h-6 text-black opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </button>
+                                <button onClick={() => copyScoreCard(tier, rawTotal.toFixed(2), streakData?.current_streak)} className="neu-btn-white flex-1 h-16 text-black rounded-full font-black text-lg flex items-center justify-center gap-4 group active:scale-95">
+                                    <span>Share Result</span>
+                                    <div className="bg-black/5 w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-black/10 transition-colors">
+                                        <svg className="w-5 h-5 text-black/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M11 13L15 9M15 9H9M15 9V15" /><circle cx="12" cy="12" r="10" />
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                            <button onClick={() => window.location.reload()} className="neu-btn animate-glow w-full text-zinc-400 hover:text-white h-16 rounded-full font-black text-lg transition active:scale-95">{retryText}</button>
+                        </div>
+
+                        <div className="text-[16px] font-medium text-zinc-700 pb-10">Made by Ayan Jyoti Dutta 😇</div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<ColorGame />);
+    </script>
+</body>
+
+</html>

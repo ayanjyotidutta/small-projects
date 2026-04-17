@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII Art Studio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>ASCII Art Studio</h1>
+            <p>Draw, convert, capture, and browse ASCII art</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="canvas">Canvas Studio</button>
+            <button class="tab-btn" data-tab="image">Image to ASCII</button>
+            <button class="tab-btn" data-tab="webcam">Webcam to ASCII</button>
+            <button class="tab-btn" data-tab="library">ASCII Library</button>
+        </nav>
+
+        <!-- Canvas Studio Tab (iframe) -->
+        <section id="canvas" class="tab-content active tab-iframe">
+            <iframe src="canvas.html" title="Canvas Studio" allowfullscreen style="touch-action: none;"></iframe>
+        </section>
+
+        <!-- Image to ASCII Tab -->
+        <section id="image" class="tab-content">
+            <div class="image-container">
+                <div class="upload-section">
+                    <h2>Image to ASCII</h2>
+                    <input type="file" id="imageUpload" accept="image/*" class="file-input">
+
+                    <div class="conversion-controls">
+                        <label>ASCII Density:</label>
+                        <select id="asciiDensity">
+                            <option value="low">Low (sparse)</option>
+                            <option value="medium" selected>Medium (balanced)</option>
+                            <option value="high">High (detailed)</option>
+                        </select>
+
+                        <label>Width (characters):</label>
+                        <input type="number" id="imageWidth" value="100" min="20" max="300">
+
+                        <label>Brightness:</label>
+                        <input type="range" id="brightness" min="-50" max="50" value="0">
+
+                        <button id="convertImage" class="btn btn-primary">Convert Image</button>
+                    </div>
+
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+
+                <div class="result-wrapper">
+                    <h3>ASCII Result</h3>
+                    <div class="image-tools">
+                        <button id="downloadImage" class="btn btn-success">Download ASCII</button>
+                        <button id="copyImage" class="btn btn-success">Copy to Clipboard</button>
+                    </div>
+                    <pre id="imageResult" class="ascii-preview"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Webcam to ASCII Tab -->
+        <section id="webcam" class="tab-content">
+            <div class="wc-fullview" id="webcamOutputArea">
+                <!-- Hidden video & canvas for capture -->
+                <video id="webcamVideo" style="display:none;" playsinline></video>
+                <canvas id="webcamCanvas" style="display:none;"></canvas>
+
+                <!-- ASCII output fills the view -->
+                <pre id="webcamResult" class="wc-ascii-fullscreen"></pre>
+
+                <!-- Floating control bar at bottom -->
+                <div class="wc-control-bar">
+                    <div class="wc-bar-group">
+                        <button id="startWebcam" class="wc-bar-btn wc-bar-primary">Start</button>
+                        <button id="stopWebcam" class="wc-bar-btn" disabled>Stop</button>
+                        <button id="flipWebcam" class="wc-bar-btn" title="Flip">Flip</button>
+                    </div>
+
+                    <div class="wc-bar-group wc-bar-sliders">
+                        <label>Brightness</label>
+                        <input type="range" id="wcBrightness" min="0" max="200" value="100">
+                        <span class="wc-bar-val" id="wcBrightnessVal">1.0</span>
+
+                        <label>Contrast</label>
+                        <input type="range" id="wcContrast" min="0" max="200" value="100">
+                        <span class="wc-bar-val" id="wcContrastVal">1.0</span>
+                    </div>
+
+                    <div class="wc-bar-group">
+                        <label>Mode</label>
+                        <select id="wcColorMode">
+                            <option value="fullcolor">Full Color</option>
+                            <option value="grayscale">Grayscale</option>
+                            <option value="blackwhite">Black on White</option>
+                            <option value="whiteblack">White on Black</option>
+                            <option value="commodore">Commodore 64</option>
+                            <option value="dosblue">DOS Blue</option>
+                            <option value="amber">Terminal Amber</option>
+                            <option value="green">Terminal Green</option>
+                            <option value="neonpink">Neon Pink</option>
+                            <option value="retroorange">Retro Orange</option>
+                        </select>
+                    </div>
+
+                    <div class="wc-bar-group">
+                        <label>Charset</label>
+                        <select id="wcPalette">
+                            <option value="singleblock">Single Block</option>
+                            <option value="solidblock">Solid Block</option>
+                            <option value="minimalist">Minimalist</option>
+                            <option value="medium" selected>Medium Set</option>
+                            <option value="longer">Longer Set</option>
+                            <option value="fullset">Full Set</option>
+                            <option value="max">Max</option>
+                            <option value="alphabetic">Alphabetic</option>
+                            <option value="alphanumeric">Alphanumeric</option>
+                            <option value="extendedhigh">Extended High</option>
+                            <option value="mathsymbols">Math Symbols</option>
+                            <option value="numerical">Numerical</option>
+                        </select>
+                    </div>
+
+                    <div class="wc-bar-group">
+                        <label>Effects</label>
+                        <select id="wcEffect">
+                            <option value="none">None</option>
+                            <option value="ansi16">ANSI 16</option>
+                            <option value="ansi256">ANSI 256</option>
+                            <option value="blackwhite">Black &amp; White</option>
+                            <option value="hazydays">Hazy Days</option>
+                            <option value="mirror">Mirror</option>
+                            <option value="mirrorleft">Mirror Left</option>
+                            <option value="spycam">Spy Cam</option>
+                            <option value="flip">Flip Vertical</option>
+                            <option value="negative">Negative</option>
+                            <option value="pixelate">Pixelate</option>
+                            <option value="blur">Blur</option>
+                            <option value="emboss">Emboss</option>
+                            <option value="posterize">Posterize</option>
+                            <option value="solarize">Solarize</option>
+                            <option value="noise">Noise</option>
+                            <option value="vignette">Vignette</option>
+                            <option value="infrared">Infrared</option>
+                            <option value="blueprint">Blueprint</option>
+                            <option value="nightvision">Night Vision</option>
+                            <option value="thermal">Thermal</option>
+                            <option value="xray">X-Ray</option>
+                            <option value="comic">Comic</option>
+                            <option value="sketch">Sketch</option>
+                            <option value="oilpaint">Oil Paint</option>
+                            <option value="mosaic">Mosaic</option>
+                            <option value="kaleidoscope">Kaleidoscope</option>
+                            <option value="glitch">Glitch</option>
+                            <option value="matrix">Matrix Rain</option>
+                            <option value="halftone">Halftone</option>
+                            <option value="crosshatch">Crosshatch</option>
+                            <option value="bulge">Bulge</option>
+                            <option value="swirl">Swirl</option>
+                            <option value="ripple">Ripple</option>
+                            <option value="fisheye">Fisheye</option>
+                        </select>
+                    </div>
+
+                    <div class="wc-bar-group">
+                        <label>Font Size</label>
+                        <input type="range" id="wcFontSize" min="4" max="20" value="10">
+                        <span class="wc-bar-val" id="wcFontSizeVal">10</span>
+                    </div>
+
+                    <div class="wc-bar-group">
+                        <label>Chars</label>
+                        <input type="range" id="wcCharacters" min="30" max="200" value="130">
+                        <span class="wc-bar-val" id="wcCharactersVal">130</span>
+                    </div>
+
+                    <div class="wc-bar-group wc-bar-actions">
+                        <button id="screenshotWebcam" class="wc-bar-btn wc-bar-green" disabled
+                            title="Screenshot">📷</button>
+                        <button id="copyWebcam" class="wc-bar-btn wc-bar-green" title="Copy">📋</button>
+                        <button id="wcResetFilters" class="wc-bar-btn" title="Reset all controls">Reset</button>
+                        <button id="wcFullscreen" class="wc-bar-btn wc-bar-primary" title="Fullscreen">⛶</button>
+                        <select id="wcExport" class="wc-bar-select-export">
+                            <option value="" disabled selected>Export</option>
+                            <option value="text">Text</option>
+                            <option value="html">HTML</option>
+                            <option value="image">PNG</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ASCII Library Tab -->
+        <section id="library" class="tab-content">
+            <div class="library-container">
+                <h2>ASCII Art Library</h2>
+
+                <div class="library-filters">
+                    <input type="text" id="searchLibrary" placeholder="Search ASCII art...">
+                    <select id="filterCategory">
+                        <option value="">All Categories</option>
+                        <option value="animals">Animals</option>
+                        <option value="objects">Objects</option>
+                        <option value="decorations">Decorations</option>
+                        <option value="custom">My Creations</option>
+                    </select>
+                </div>
+
+                <div class="library-items" id="libraryItems"></div>
+
+                <div class="save-custom">
+                    <h3>Save Your ASCII Art</h3>
+                    <input type="text" id="customName" placeholder="Name your creation...">
+                    <select id="customCategory">
+                        <option value="custom">My Creation</option>
+                        <option value="animals">Animals</option>
+                        <option value="objects">Objects</option>
+                        <option value="decorations">Decorations</option>
+                    </select>
+                    <textarea id="customArt" placeholder="Paste your ASCII art here..."></textarea>
+                    <button id="saveCustom" class="btn btn-primary">Save to Library</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Spectrum - Toggle Mode</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --ui-bg: rgba(0, 0, 0, 0.05);
+            --ui-border: rgba(0, 0, 0, 0.1);
+            --input-bg: rgba(255, 255, 255, 0.8);
+            --text-color: #333;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --ui-bg: rgba(255, 255, 255, 0.05);
+            --ui-border: rgba(255, 255, 255, 0.1);
+            --input-bg: rgba(0, 0, 0, 0.4);
+            --text-color: #eee;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.5s ease;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Toggle Button Styles */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 10px 20px;
+            background: var(--ui-bg);
+            border: 1px solid var(--ui-border);
+            border-radius: 50px;
+            color: var(--text-color);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 40px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background: var(--ui-bg);
+            backdrop-filter: blur(15px);
+            padding: 25px 50px;
+            border-radius: 30px;
+            border: 1px solid var(--ui-border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            transition: 0.3s;
+        }
+
+        #textInput {
+            width: 320px;
+            padding: 12px 20px;
+            background: var(--input-bg);
+            border: 1px solid var(--ui-border);
+            border-radius: 15px;
+            color: var(--text-color);
+            font-size: 16px;
+            text-align: center;
+            outline: none;
+        }
+
+        .strip-wrapper {
+            position: relative;
+            width: 320px;
+            height: 12px;
+            cursor: crosshair;
+        }
+
+        #colorStrip {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+            background: linear-gradient(to right, #00ced1, #000080, #E6007E, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        #pickerMarker {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body data-theme="light">
+
+    <button class="theme-toggle" id="themeBtn">Switch to Dark Mode</button>
+    <canvas id="canvas1"></canvas>
+
+    <div class="controls">
+        <input type="text" id="textInput" value="Made by Ayan" autocomplete="off">
+        <div class="strip-wrapper" id="stripContainer">
+            <div id="colorStrip"></div>
+            <div id="pickerMarker"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas1');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const textInput = document.getElementById('textInput');
+        const stripContainer = document.getElementById('stripContainer');
+        const marker = document.getElementById('pickerMarker');
+        const themeBtn = document.getElementById('themeBtn');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let currentColor = '#00ced1'; // Starting Teal/Cyan
+        const mouse = { x: null, y: null, radius: 100 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        // Toggle Logic
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = document.body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', newTheme);
+            themeBtn.innerText = `Switch to ${newTheme === 'light' ? 'Dark' : 'Light'} Mode`;
+        });
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.baseX = x;
+                this.baseY = y;
+                this.size = (Math.random() * 1.8) + 0.6;
+                this.density = (Math.random() * 35) + 2;
+            }
+            draw() {
+                ctx.fillStyle = currentColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            update() {
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < mouse.radius) {
+                    let force = (mouse.radius - distance) / mouse.radius;
+                    this.x -= (dx / distance) * force * this.density;
+                    this.y -= (dy / distance) * force * this.density;
+                } else {
+                    this.x -= (this.x - this.baseX) / 12;
+                    this.y -= (this.y - this.baseY) / 12;
+                }
+            }
+        }
+
+        function init() {
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const text = textInput.value || "";
+            if (!text) return;
+
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 140px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const textCoordinates = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let y = 0; y < textCoordinates.height; y += 2) {
+                for (let x = 0; x < textCoordinates.width; x += 2) {
+                    if (textCoordinates.data[(y * 4 * textCoordinates.width) + (x * 4) + 3] > 128) {
+                        particles.push(new Particle(x, y));
+                    }
+                }
+            }
+        }
+
+        function updateColor(e) {
+            const rect = stripContainer.getBoundingClientRect();
+            let x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+            marker.style.left = (x / rect.width * 100) + '%';
+
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = rect.width; tempCanvas.height = 1;
+            const grad = tempCtx.createLinearGradient(0, 0, rect.width, 0);
+            grad.addColorStop(0, '#00ced1'); grad.addColorStop(0.15, '#000080');
+            grad.addColorStop(0.3, '#E6007E'); grad.addColorStop(0.45, '#ff0000');
+            grad.addColorStop(0.6, '#ffff00'); grad.addColorStop(0.75, '#00ff00');
+            grad.addColorStop(0.9, '#00ffff'); grad.addColorStop(1, '#0000ff');
+            tempCtx.fillStyle = grad; tempCtx.fillRect(0, 0, rect.width, 1);
+            const pixel = tempCtx.getImageData(x, 0, 1, 1).data;
+            currentColor = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+        }
+
+        stripContainer.addEventListener('mousedown', (e) => {
+            updateColor(e);
+            const moveHandler = (ev) => updateColor(ev);
+            window.addEventListener('mousemove', moveHandler);
+            window.addEventListener('mouseup', () => window.removeEventListener('mousemove', moveHandler), { once: true });
+        });
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        textInput.addEventListener('input', init);
+        init();
+        animate();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; init(); });
+    </script>
+</body>
+
+</html>
